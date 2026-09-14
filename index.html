@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>肿瘤学总论</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: linear-gradient(160deg, #0b1e3a 0%, #10294d 45%, #0d2240 100%);
+    font-family: "PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;
+    color:#e8f1ff; min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  }
+  .header { text-align:center; padding:26px 16px 10px; width:100%; }
+  .header h1 { font-size:22px; font-weight:600; letter-spacing:1px;
+    background:linear-gradient(90deg,#5ec8ff,#8ea8ff); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .header p { font-size:13px; color:#9fb8d8; margin-top:6px; }
+  .stage { width:min(1024px, 96vw); position:relative; border-radius:14px; overflow:hidden;
+    background:#000; box-shadow:0 18px 60px rgba(0,0,0,.55); margin:14px 0 20px; }
+  video { display:block; width:100%; aspect-ratio:16/9; background:#000; }
+  .sub-box { position:absolute; left:6%; right:6%; bottom:8%; text-align:center; pointer-events:none; }
+  .sub-text {
+    display:inline-block; max-width:100%;
+    background:rgba(6,16,32,.72); color:#fff; font-size:clamp(14px,2.2vw,20px);
+    line-height:1.5; padding:6px 14px; border-radius:8px; letter-spacing:.5px;
+    text-shadow:0 1px 4px rgba(0,0,0,.8); backdrop-filter:blur(2px);
+    transition:opacity .15s;
+  }
+  .controls { display:flex; align-items:center; gap:12px; padding:12px 14px; background:rgba(255,255,255,.05);
+    border-top:1px solid rgba(255,255,255,.08); }
+  .btn { background:rgba(94,200,255,.14); border:1px solid rgba(94,200,255,.4); color:#cfeaff;
+    border-radius:8px; padding:7px 14px; font-size:13px; cursor:pointer; transition:.2s; white-space:nowrap; }
+  .btn:hover { background:rgba(94,200,255,.28); }
+  .btn.on { background:rgba(94,200,255,.45); color:#fff; }
+  .progress { flex:1; height:6px; background:rgba(255,255,255,.15); border-radius:3px; cursor:pointer; position:relative; }
+  .progress .fill { position:absolute; left:0; top:0; height:100%; width:0%; border-radius:3px;
+    background:linear-gradient(90deg,#3fb0ff,#7b8bff); }
+  .time { font-size:12px; color:#9fb8d8; min-width:96px; text-align:right; font-variant-numeric:tabular-nums; }
+  .quiz-mask { position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(4,10,22,.86); z-index:20; padding:4%; }
+  .quiz-mask.show { display:flex; }
+  .quiz-card { width:min(620px,100%); background:linear-gradient(170deg,#132a4e,#0d1f3a);
+    border:1px solid rgba(94,200,255,.35); border-radius:16px; padding:26px 26px 20px;
+    box-shadow:0 20px 60px rgba(0,0,0,.6); max-height:90%; overflow:auto; }
+  .quiz-tag { display:inline-block; font-size:12px; color:#7fd4ff; border:1px solid rgba(127,212,255,.5);
+    border-radius:20px; padding:3px 12px; margin-bottom:14px; letter-spacing:1px; }
+  .quiz-q { font-size:17px; line-height:1.7; font-weight:600; margin-bottom:18px; }
+  .opt { display:block; width:100%; text-align:left; background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.14); color:#e8f1ff; border-radius:10px;
+    padding:12px 16px; margin-bottom:10px; font-size:15px; line-height:1.55; cursor:pointer; transition:.18s; }
+  .opt:hover { border-color:#5ec8ff; background:rgba(94,200,255,.12); }
+  .opt.correct { border-color:#3ddc97; background:rgba(61,220,151,.16); color:#b9ffdd; }
+  .opt.wrong { border-color:#ff6b6b; background:rgba(255,107,107,.14); color:#ffc9c9; }
+  .opt.disabled { pointer-events:none; }
+  .quiz-exp { display:none; margin-top:14px; padding:13px 15px; border-radius:10px;
+    background:rgba(61,220,151,.1); border:1px solid rgba(61,220,151,.35); font-size:14px; line-height:1.7; color:#d8ffe9; }
+  .quiz-exp.show { display:block; }
+  .quiz-next { display:none; margin-top:16px; width:100%; padding:13px; font-size:15px; font-weight:600;
+    background:linear-gradient(90deg,#2fa6ff,#6d7bff); border:none; color:#fff; border-radius:10px; cursor:pointer; }
+  .quiz-next.show { display:block; }
+  .hint { color:#ffb3b3; font-size:13px; margin-top:8px; display:none; }
+  .hint.show { display:block; }
+  .footer { text-align:center; padding:8px 16px 28px; font-size:12px; color:#7d93b5; }
+  .loading { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:#0a1830; z-index:30; gap:14px; }
+  .loading .bar { width:220px; height:5px; background:rgba(255,255,255,.14); border-radius:3px; overflow:hidden; }
+  .loading .bar i { display:block; height:100%; width:0%; background:linear-gradient(90deg,#3fb0ff,#7b8bff); transition:width .2s; }
+  .loading span { font-size:14px; color:#9fb8d8; }
+  @media (max-width:640px){
+    .header h1 { font-size:18px; }
+    .controls { gap:8px; padding:10px; }
+    .btn { padding:6px 10px; font-size:12px; }
+    .quiz-q { font-size:15px; }
+    .opt { font-size:14px; padding:11px 13px; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>肿瘤学总论</h1>
+  <p>从分子遗传机制到临床多学科协作，构建系统化的肿瘤学认知体系</p>
+</div>
+
+<div class="stage">
+  <video id="v" preload="auto" playsinline></video>
+  <div class="sub-box"><span class="sub-text" id="sub"></span></div>
+
+  <div class="quiz-mask" id="quizMask">
+    <div class="quiz-card">
+      <span class="quiz-tag">随堂测验</span>
+      <div class="quiz-q" id="qText"></div>
+      <div id="qOpts"></div>
+      <div class="hint" id="qHint"></div>
+      <div class="quiz-exp" id="qExp"></div>
+      <button class="quiz-next" id="qNext">继续观看</button>
+    </div>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="bar"><i id="loadBar"></i></div>
+    <span id="loadText">正在加载视频…</span>
+  </div>
+
+  <div class="controls">
+    <button class="btn" id="playBtn">播放</button>
+    <div class="progress" id="prog"><div class="fill" id="progFill"></div></div>
+    <span class="time" id="time">00:00 / 00:00</span>
+    <button class="btn on" id="subBtn">字幕</button>
+    <button class="btn" id="fsBtn">全屏</button>
+  </div>
+</div>
+
+<div class="footer">肿瘤学总论 · 培训视频｜讲解：讲师带教 · 配音：AI 女声</div>
+
+<script src="sub_data.js"></script>
+<script>
+(function(){
+  var QUIZ = [{"t": 336.9, "q": "下列哪项是恶性肿瘤区别于良性肿瘤的最关键特征？", "opts": ["A. 生长速度缓慢", "B. 有完整纤维包膜", "C. 侵袭周围组织并可远处转移", "D. 仅表现为局部压迫症状"], "a": 2, "exp": "恶性肿瘤呈蟹足状浸润生长、可经血液或淋巴转移，这是其区别于良性肿瘤的根本特征；良性肿瘤边界清晰、不转移，危害主要来自局部压迫。"}, {"t": 866.1, "q": "下列哪项措施属于肿瘤的二级预防？", "opts": ["A. 戒烟限酒", "B. 接种 HPV 疫苗", "C. 高危人群每年行低剂量螺旋 CT 筛查肺癌", "D. 对晚期患者实施姑息治疗"], "a": 2, "exp": "二级预防核心是“早发现、早诊断、早治疗”，低剂量螺旋 CT 筛查肺癌属于早期筛查；戒烟限酒、接种疫苗属一级预防，姑息治疗属三级预防。"}, {"t": 1613.9, "q": "肿瘤定性诊断的“金标准”是？", "opts": ["A. PET-CT", "B. 肿瘤标志物升高", "C. 病理组织学诊断", "D. 超声检查"], "a": 2, "exp": "病理组织学诊断能直接观察肿瘤细胞形态并做出最终定性判断，是确诊的唯一金标准；影像和标志物仅提供辅助线索，不能单独确诊。"}, {"t": 2365.5, "q": "关于根治性手术与姑息性手术，下列哪项说法正确？", "opts": ["A. 根治性手术适用于已发生远处转移的患者", "B. 姑息性手术以彻底切除肿瘤为唯一目标", "C. 姑息性手术旨在解除症状、改善患者生活质量", "D. 根治性手术后无需任何辅助治疗"], "a": 2, "exp": "姑息性手术不以根治为目标，旨在解除梗阻、出血等症状、减轻痛苦、提高生活质量；根治性手术适用于肿瘤局限、无远处转移者，且术后常需辅助治疗。"}, {"t": 2769.4, "q": "抗体药物偶联物（ADC）的“三要素”是？", "opts": ["A. 抗体、连接子、载荷", "B. 抗体、细胞因子、化疗药物", "C. 连接子、放射线、载体", "D. 靶点、抗体、免疫佐剂"], "a": 0, "exp": "ADC 由抗体（精准导航）、连接子（稳定桥梁）、载荷（强效弹头）三要素构成，实现“精准制导、定点爆破”；放射线、免疫佐剂不属于 ADC 结构。"}, {"t": 2954.4, "q": "患者说“只要能让我康复，我什么都愿意做”，这最符合库伯勒-罗丝心理反应模型中的哪个阶段？", "opts": ["A. 否认与震惊", "B. 愤怒", "C. 讨价还价", "D. 接受"], "a": 2, "exp": "“用承诺换取生机”是典型的讨价还价阶段表现——患者试图通过自我约束或交换，重新获得对疾病和生命的掌控感。"}];
+  var video = document.getElementById('v');
+  var subEl = document.getElementById('sub');
+  var loading = document.getElementById('loading');
+  var loadBar = document.getElementById('loadBar');
+  var loadText = document.getElementById('loadText');
+  var playBtn = document.getElementById('playBtn');
+  var prog = document.getElementById('prog');
+  var progFill = document.getElementById('progFill');
+  var timeEl = document.getElementById('time');
+  var subBtn = document.getElementById('subBtn');
+  var fsBtn = document.getElementById('fsBtn');
+  var quizMask = document.getElementById('quizMask');
+  var qText = document.getElementById('qText');
+  var qOpts = document.getElementById('qOpts');
+  var qHint = document.getElementById('qHint');
+  var qExp = document.getElementById('qExp');
+  var qNext = document.getElementById('qNext');
+  var SUBS = window.SUB_DATA || [];
+  var subsOn = true;
+  var quizDone = {}; var curQuiz = null; var answered = false;
+
+  // Blob preload (works without HTTP Range)
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'video.mp4', true);
+  xhr.responseType = 'blob';
+  xhr.onprogress = function(e){
+    if (e.lengthComputable) {
+      var p = Math.round(e.loaded / e.total * 100);
+      loadBar.style.width = p + '%';
+      loadText.textContent = '正在加载视频… ' + p + '%';
+    }
+  };
+  xhr.onload = function(){
+    if (xhr.status === 200 || xhr.status === 0) {
+      video.src = URL.createObjectURL(xhr.response);
+      loading.style.display = 'none';
+      loadText.textContent = '加载完成，点击播放';
+    } else {
+      loadText.textContent = '视频加载失败，请刷新重试';
+    }
+  };
+  xhr.onerror = function(){ loadText.textContent = '视频加载失败，请检查网络'; };
+  xhr.send();
+
+  function fmt(s){
+    s = Math.max(0, Math.floor(s));
+    var h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+    return (h>0?(h+':'+String(m).padStart(2,'0')):String(m).padStart(2,'0')) + ':' + String(ss).padStart(2,'0');
+  }
+
+  playBtn.addEventListener('click', function(){
+    if (video.paused) { video.play(); } else { video.pause(); }
+  });
+  video.addEventListener('play', function(){ playBtn.textContent = '暂停'; });
+  video.addEventListener('pause', function(){ playBtn.textContent = '播放'; });
+  video.addEventListener('ended', function(){ playBtn.textContent = '重播'; });
+
+  prog.addEventListener('click', function(e){
+    var r = prog.getBoundingClientRect();
+    var t = (e.clientX - r.left) / r.width * video.duration;
+    video.currentTime = t;
+  });
+
+  video.addEventListener('timeupdate', function(){
+    var t = video.currentTime;
+    progFill.style.width = (video.duration ? t/video.duration*100 : 0) + '%';
+    timeEl.textContent = fmt(t) + ' / ' + fmt(video.duration||0);
+    // subtitle via binary search
+    if (subsOn) {
+      var idx = -1, lo = 0, hi = SUBS.length - 1;
+      while (lo <= hi) {
+        var mid = (lo + hi) >> 1;
+        if (SUBS[mid][0] <= t) { idx = mid; lo = mid + 1; } else { hi = mid - 1; }
+      }
+      if (idx >= 0 && SUBS[idx][1] >= t) subEl.textContent = SUBS[idx][2];
+      else subEl.textContent = '';
+    }
+    // quiz trigger
+    for (var i=0;i<QUIZ.length;i++){
+      var q = QUIZ[i];
+      if (!quizDone[i] && t >= q.t && !video.paused) {
+        quizDone[i] = true; curQuiz = q; answered = false;
+        video.pause(); showQuiz(q); break;
+      }
+    }
+  });
+
+  subBtn.addEventListener('click', function(){
+    subsOn = !subsOn;
+    subBtn.classList.toggle('on', subsOn);
+    if (!subsOn) subEl.textContent = '';
+  });
+
+  fsBtn.addEventListener('click', function(){
+    var st = document.querySelector('.stage');
+    if (document.fullscreenElement) document.exitFullscreen();
+    else st.requestFullscreen && st.requestFullscreen();
+  });
+
+  function showQuiz(q){
+    qText.textContent = q.q;
+    qOpts.innerHTML = '';
+    qHint.className = 'hint'; qExp.className = 'quiz-exp'; qNext.className = 'quiz-next';
+    q.opts.forEach(function(op, i){
+      var b = document.createElement('button');
+      b.className = 'opt'; b.textContent = op;
+      b.addEventListener('click', function(){ choose(i, b); });
+      qOpts.appendChild(b);
+    });
+    quizMask.classList.add('show');
+  }
+
+  function choose(i, btn){
+    if (answered) return;
+    var q = curQuiz;
+    var opts = qOpts.querySelectorAll('.opt');
+    if (i === q.a) {
+      answered = true;
+      opts.forEach(function(o, j){ o.classList.add('disabled'); if (j===q.a) o.classList.add('correct'); });
+      qExp.textContent = '✅ 回答正确！' + q.exp;
+      qExp.classList.add('show'); qNext.classList.add('show');
+      qHint.className = 'hint';
+    } else {
+      btn.classList.add('wrong');
+      qHint.textContent = '再想想，这个知识点刚刚讲过哦～';
+      qHint.classList.add('show');
+    }
+  }
+
+  qNext.addEventListener('click', function(){
+    quizMask.classList.remove('show'); curQuiz = null; video.play();
+  });
+
+  // click mask outside card = no-op (must answer to continue)
+})();
+</script>
+</body>
+</html>
